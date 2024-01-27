@@ -5,18 +5,18 @@ import keyboard
 import time
 import pyautogui
 import threading
-import random
 import os
 from commands import enter_sigil
 from battle_status_updater import update_battle_status
 from shared_state import battle_status, status_lock
+import mss.tools
 
 current_status = None
 scene_detected = None
 template = cv2.imread('template.jpg', 0)
 threshold = 0.7
-sct = mss()
-monitor = sct.monitors[1]
+sct = mss.mss()
+monitor = sct.monitors[3]
 boundingbox = {'top': monitor['top'], 'left': monitor['left'], 'width': monitor['width'], 'height': monitor['height']}
 
 
@@ -73,6 +73,7 @@ def sceneEnded():
     print("Scene No Longer Detected, walking forward...")
 
 def main():
+
     global exit_thread_flag
     runs = 0
     end_thread = threading.Thread(target = end_program_thread)
@@ -104,20 +105,13 @@ def main():
         pyautogui.click()
         time.sleep(0.1)
         pyautogui.click()
-            
-        # Waits for average battle durantation time before continuing
-        #time.sleep(25)
 
-        # Hold 'w' until next scene change is detected
+        time.sleep(6)
             
-        #exit_thread_flag = False
-        #w_thread = threading.Thread(target=thread_w_key)
-        #w_thread.start()
-
-        # while in battle spinlock
         while current_status == False:
             time.sleep(1)
 
+        print("w key down")
         pyautogui.keyDown('w')
 
 
