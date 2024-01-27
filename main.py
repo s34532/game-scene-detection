@@ -6,17 +6,37 @@ import time
 import pyautogui
 import threading
 import random
+import os
+from commands import enter_sigil
+from battle_status_updater import update_battle_status
+from shared_state import battle_status, status_lock
 
-exit_thread_flag = False
+current_status = None
+scene_detected = None
+template = cv2.imread('template.jpg', 0)
+threshold = 0.7
+sct = mss()
+monitor = sct.monitors[1]
+boundingbox = {'top': monitor['top'], 'left': monitor['left'], 'width': monitor['width'], 'height': monitor['height']}
 
-def thread_w_key():
-    print("thread started...")
-    while not exit_thread_flag:  # Check the flag before each iteration
-        pyautogui.keyDown('w')
-        random_interval = random.uniform(0, 2)
-        time.sleep(random_interval)
-        pyautogui.keyUp('w')
 
+def check_battle_status():
+    global current_status
+    while True:
+        with status_lock:
+            current_status = battle_status['in_battle']
+        print(f"Main thread checking status: {current_status}")
+
+        time.sleep(5)
+
+
+
+def end_program_thread():
+    print("end_program_thread started\n")
+    keyboard.wait('F9')
+    print("F9 pressed, stopping the program...")
+    os._exit(1)
+            
 def wait_for_hotkey(key):
     print(f"Waiting for {key} to be pressed...")
     keyboard.wait(key)
@@ -26,29 +46,12 @@ def is_scene_detected(gray_screen, template, threshold):
     res = cv2.matchTemplate(gray_screen, template, cv2.TM_CCOEFF_NORMED)
     return np.any(res >= threshold)
 
-template = cv2.imread('template.jpg', 0)
-threshold = 0.7
-
-sct = mss()
-monitor = sct.monitors[3]
-bbox = {'top': monitor['top'], 'left': monitor['left'], 'width': monitor['width'], 'height': monitor['height']}
-
-wait_for_hotkey('F8')
-
-while True:
-    # Check for F9 key press to exit the program
-    if keyboard.is_pressed('F9'):
-        print("F9 pressed, stopping the program...")
-        break
-
-    # Press 'x'
-    print("press x")
-    pyautogui.press('x')
-
-    # Wait for scene to appear
+def sceneDetected():
+    global scene_detected 
     scene_detected = False
+    # Wait for scene to appear
     while not scene_detected:
-        sct_img = sct.grab(bbox)
+        sct_img = sct.grab(boundingbox)
         screen = np.array(sct_img)
         gray_screen = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
         scene_detected = is_scene_detected(gray_screen, template, threshold)
@@ -56,57 +59,84 @@ while True:
 
     print("Scene Detected")
 
+def sceneEnded():
+    global scene_detected
+
     # Wait for scene to go away
     while scene_detected:
-        sct_img = sct.grab(bbox)
+        sct_img = sct.grab(boundingbox)
         screen = np.array(sct_img)
         gray_screen = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
         scene_detected = is_scene_detected(gray_screen, template, threshold)
         time.sleep(0.1)  # Sleep to prevent high CPU usage
 
     print("Scene No Longer Detected, walking forward...")
-    
-    # Hold 'w' for 3 seconds
-    pyautogui.keyDown('w')
-    time.sleep(3)
-    pyautogui.keyUp('w')
 
-    # Perform clicks
-    pyautogui.moveTo(1800, 800)
-    time.sleep(5)
-    pyautogui.moveTo(2007, 1031)
-    time.sleep(0.1)
-    pyautogui.click(button='left', clicks=2)
-
-    # Sleep for 10 seconds
-    time.sleep(10)
-
-    # Hold 'w' until next scene change is detected
-    w_thread = threading.Thread(target=thread_w_key)
-    w_thread.start()
+def main():
+    global exit_thread_flag
+    runs = 0
+    end_thread = threading.Thread(target = end_program_thread)
+    end_thread.start()
 
 
-    scene_detected = False
-    while not scene_detected:
-        sct_img = sct.grab(bbox)
-        screen = np.array(sct_img)
-        gray_screen = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
-        scene_detected = is_scene_detected(gray_screen, template, threshold)
-        time.sleep(0.1)  # Sleep to prevent high CPU usage
+    check_status_thread = threading.Thread(target=check_battle_status)
+    check_status_thread.start()
 
-    # Set the exit_thread_flag to True to stop the thread
-    exit_thread_flag = True
+    status_thread = threading.Thread(target=update_battle_status)
+    status_thread.start()
 
-    # Join the thread to wait for it to finish
-    w_thread.join()
+    wait_for_hotkey('F8')
 
-    pyautogui.keyUp('w')
-    print("Next Scene Detected")
+    while True:
+        enter_sigil()
 
-    # Reset the exit_thread_flag for the next iteration
-    exit_thread_flag = False
-    time.sleep(5)
+        sceneDetected()
+        sceneEnded()
+            
+        pyautogui.keyDown('w')
+        time.sleep(3)
+        pyautogui.keyUp('w')
+
+        # Perform clicks
+        time.sleep(6)
+        print("press a and space")
+        pyautogui.moveTo(2007, 1031)
+        pyautogui.click()
+        time.sleep(0.1)
+        pyautogui.click()
+            
+        # Waits for average battle durantation time before continuing
+        #time.sleep(25)
+
+        # Hold 'w' until next scene change is detected
+            
+        #exit_thread_flag = False
+        #w_thread = threading.Thread(target=thread_w_key)
+        #w_thread.start()
+
+        # while in battle spinlock
+        while current_status == False:
+            time.sleep(1)
+
+        pyautogui.keyDown('w')
 
 
-# Program termination
-print("Program stopped.")
+        sceneDetected()
+        exit_thread_flag = True
+        pyautogui.keyUp('w')
+        print("Thread ended")
+        sceneEnded()
+            
+        runs = runs + 1
+
+        if (runs > 1):
+            print("The dungeon has been run: " + str(runs) + " times!")
+        else:
+            print("The dungeon has been run: " + str(runs) + " time!")
+
+        time.sleep(3)
+
+
+
+if __name__ == "__main__":
+    main()
