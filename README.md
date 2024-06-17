@@ -1,3 +1,3 @@
 Scene detector for a video game which trains a tensorflow model on various game footage and creates a model which can differentiate footage between particular events in game then execute a series of macros based on the detected scene.
 
-GUI is unfinished and some test cases were not accounted for in original development so a new version is planned to be created with improved frontend and model.
+GUI is unfinished and some test cases were not accounted for in original development so a new version is planned to be created with improved frontend and model. Despite this the model works accurately for over 50+ dungeons in game and accurately uses macros despite some edge cases causing failures such as players walking or fizzling causing innacurate model readings.
