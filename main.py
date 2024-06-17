@@ -16,7 +16,7 @@ scene_detected = None
 template = cv2.imread('template.jpg', 0)
 threshold = 0.7
 sct = mss.mss()
-monitor = sct.monitors[3]
+monitor = sct.monitors[1]
 boundingbox = {'top': monitor['top'], 'left': monitor['left'], 'width': monitor['width'], 'height': monitor['height']}
 
 
@@ -47,6 +47,7 @@ def is_scene_detected(gray_screen, template, threshold):
     return np.any(res >= threshold)
 
 def sceneDetected():
+    print("scene detected code running")
     global scene_detected 
     scene_detected = False
     # Wait for scene to appear
@@ -55,7 +56,7 @@ def sceneDetected():
         screen = np.array(sct_img)
         gray_screen = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
         scene_detected = is_scene_detected(gray_screen, template, threshold)
-        time.sleep(0.1)  # Sleep to prevent high CPU usage
+        time.sleep(0.05)  # Sleep to prevent high CPU usage
 
     print("Scene Detected")
 
@@ -68,7 +69,7 @@ def sceneEnded():
         screen = np.array(sct_img)
         gray_screen = cv2.cvtColor(screen, cv2.COLOR_BGR2GRAY)
         scene_detected = is_scene_detected(gray_screen, template, threshold)
-        time.sleep(0.1)  # Sleep to prevent high CPU usage
+        time.sleep(0.05)  # Sleep to prevent high CPU usage
 
     print("Scene No Longer Detected, walking forward...")
 
@@ -113,7 +114,6 @@ def main():
 
         print("w key down")
         pyautogui.keyDown('w')
-
 
         sceneDetected()
         exit_thread_flag = True

@@ -28,7 +28,7 @@ def preprocess_image(sct_img):
 
 def update_battle_status():
     sct = mss.mss()
-    monitor = sct.monitors[3]
+    monitor = sct.monitors[1]
 
     while True:
         # grab image from monitor
